@@ -1,0 +1,78 @@
+# ============================================================================
+# 🍕 PIZZERIA PROJECT - GITIGNORE
+# ============================================================================
+
+# Documentation (à ignorer du versioning)
+doc/*
+
+# Composer
+vendor/
+composer.lock
+
+# IDE / Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Fichiers de configuration sensibles
+.env
+.env.local
+.env.*.local
+
+# Logs et cache
+*.log
+logs/
+cache/
+tmp/
+
+# PHP
+*.phtml
+.php_cs.cache
+.phpunit.result.cache
+
+# MongoDB
+*.db
+*.dat
+
+# OS
+._*
+.AppleDouble
+.LSOverride
+
+# Tests
+coverage/
+.coverage
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.swp
+~*
+
+# Node (si vous utilisez npm/webpack à l'avenir)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Fichiers de test locaux
+test-*.php
+debug-*.php
+local/
+
+# piedades de déploiement
+*.zip
+*.tar.gz
+build/
+dist/
+
+# ============================================================================
+# EXCEPTIONS - Fichiers à tracker même s'ils matchent les patterns ci-dessus
+# ============================================================================
+
+!.gitkeep
+!.env.example
+!doc/.gitkeep

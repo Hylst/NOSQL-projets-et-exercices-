@@ -1,0 +1,3 @@
+# Ce fichier permet à Git de tracker ce dossier même s'il est vide.
+# Les fichiers dans ce dossier sont ignorés par .gitignore
+# À utiliser pour: documentation locale, fichiers de travail, etc.

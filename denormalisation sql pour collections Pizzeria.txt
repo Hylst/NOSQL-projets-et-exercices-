@@ -1,0 +1,151 @@
+Dénormalisation SQL -> NoSQL via collections / JSON de la base de données relationnelle SQL de la pizzeria définit par :
+
+'''
+- **Ingredients** (<u>idIngredient</u>, nomIngredient, prixUnitaireIngredient, #symboleUnite)
+  - idIngredient : Clé primaire
+  - symboleUnite : Clé étrangère en référence à symboleUnite de Unites
+
+- **Unites** (<u>symboleUnite</u>, libelleUnite)
+  - symboleUnite : Clé primaire
+
+- **Compositions** (<u>idComposition</u>, #idPizza, #idIngredient, quantite)
+  - idComposition : Clé primaire
+  - idPizza : Clé étrangère en référence à idPizza de Pizzas
+  - idIngredient : Clé étrangère en référence à idIngredient de Ingredients
+
+- **Pizzas** (<u>idPizza</u>, nomPizza, prixVentePizza)
+  - idPizza : Clé primaire
+
+- **LignesCommande** (<u>idLigneCommande</u>, #idPizza, #idCommande, quantite)
+  - idLigneCommande : Clé primaire
+  - idPizza : Clé étrangère en référence à idPizza de Pizzas
+  - idCommande : Clé étrangère en référence à idCommande de Commandes
+
+- **Commandes** (<u>idCommande</u>, dateCommande, heureCommande, heureLivraison, #idEmploye)
+  - idCommande : Clé primaire
+  - idEmploye : Clé étrangère en référence à idEmploye de Employes
+
+- **Employes** (<u>idEmploye</u>, nomEmploye, prenomEmploye, dateNaissance, salaireMensuel, dateEmbauche)
+  - idEmploye : Clé primaire
+  
+'''
+
+Déinition des collections :
+
+
+1. Collection pizzas
+
+Chaque document = une pizza avec tous ses ingrédients directement intégrés (dénormalisation de la relation Compositions et Ingredients). 
+-> permet d’afficher une pizza sans jointure.
+
+'''json
+json
+{
+  "_id": 1,
+  "nom": "Roquefort",
+  "prixVente": 14.00,
+  "ingredients": [
+    {
+      "nom": "Sauce tomate",
+      "quantite": 0.1,
+      "unite": "L",
+      "prixUnitaire": 3.00,
+      "cout": 0.30
+    },
+    {
+      "nom": "Pâte à pizza",
+      "quantite": 1,
+      "unite": "pâte",
+      "prixUnitaire": 1.00,
+      "cout": 1.00
+    },
+    {
+      "nom": "Roquefort",
+      "quantite": 0.1,
+      "unite": "kg",
+      "prixUnitaire": 5.00,
+      "cout": 0.50
+    },
+    {
+      "nom": "Chèvre",
+      "quantite": 0.13,
+      "unite": "kg",
+      "prixUnitaire": 6.00,
+      "cout": 0.78
+    },
+    {
+      "nom": "Olives",
+      "quantite": 0.1,
+      "unite": "kg",
+      "prixUnitaire": 7.35,
+      "cout": 0.735
+    }
+  ],
+  "coutTotal": 4.38,      // optionnel : somme des coûts
+  "marge": 9.62            // optionnel : prixVente - coutTotal
+}
+'''
+
+Remarques :
+
+l’unrté directements tockée sous fotme de texte (ex. "L", "kg", "pâte")
+onn peut add des champs calculés comme coutTotal pour faciliter les analyses
+cetee structure évite jointures entre Pizzas, Compositions, Ingredients et Unites.
+
+
+2.Collection employes
+
+
+employés peu modifiés, souvent référencés dans commandes. 
+conservation dans collection séparée (réérence simple) > éviter duplication des infors ds chaque commande.
+
+'''json
+
+{
+  "_id": 1,
+  "nom": "MARTIN",
+  "prenom": "Julien",
+  "dateNaissance": "1980-06-11",
+  "salaireMensuel": 1150.00,
+  "dateEmbauche": "2000-11-12"
+}
+
+'''
+'''json
+{
+  "_id": 2,
+  "nom": "DURAND",
+  "prenom": "Ludovic",
+  "dateNaissance": "1981-11-12",
+  "salaireMensuel": 1200.00,
+  "dateEmbauche": "2002-05-06"
+}
+'''
+
+
+3.Collection commandes
+
+Chaque document repr&sente 1 commande avec :
+- infos de la commande (date, heures)
+- ref à l’employé (son _id) pour ne pas dupliquer les données (imbri nom possible suivant requetes)
+- liste des lignes de commande avec détails des pizzas (nom, prix, quantité) >dénorma des infos pizza > évite jointure pdt consultation.
+
+'''json
+{
+  "_id": 1,
+  "date": "2026-03-20",
+  "heureCommande": "12:00:00",
+  "heureLivraison": "13:00:00",
+  "employe_id": 1,
+  "lignes": [
+    {
+      "pizza_nom": "Roquefort",
+      "pizza_prix": 14.00,
+      "quantite": 1,
+      "totalLigne": 14.00
+    }
+  ],
+  "totalCommande": 14.00
+}
+'''
+

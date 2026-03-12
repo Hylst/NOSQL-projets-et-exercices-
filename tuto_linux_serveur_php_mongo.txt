@@ -1,0 +1,344 @@
+Guide pas à pas pour configurer un environnement de développement complet sous WSL (Ubuntu) avec Apache, PHP, MongoDB, et permettre l'édition des fichiers depuis Windows avec VSCode. Ce guide est destiné à un débutant.
+
+---
+
+## 1. Installer WSL et Ubuntu
+
+Si ce n'est pas déjà fait, installe WSL et une distribution Ubuntu.
+
+**Dans PowerShell (en administrateur)** :
+```powershell
+wsl --install -d Ubuntu
+```
+Cela installe WSL2 et Ubuntu. Redémarre si nécessaire.
+
+Après installation, lance Ubuntu depuis le menu Démarrer. La première fois, il te demandera de créer un nom d'utilisateur et un mot de passe (pour Linux, différent de celui de Windows).
+
+---
+
+## 2. Mettre à jour Ubuntu et installer Apache, PHP et les extensions
+
+Ouvre le terminal Ubuntu (WSL) et exécute :
+
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+### Installer Apache2
+```bash
+sudo apt install apache2 -y
+```
+
+### Installer PHP et les modules courants
+```bash
+sudo apt install php libapache2-mod-php php-cli php-common php-mbstring php-xml php-zip php-curl -y
+```
+
+### Démarrer Apache et vérifier
+```bash
+sudo systemctl start apache2
+sudo systemctl enable apache2
+```
+
+Pour tester, ouvre un navigateur Windows et va à l'adresse `http://localhost`. Tu devrais voir la page par défaut d'Apache.
+
+---
+
+## 3. Installer MongoDB
+
+### Ajouter le dépôt officiel MongoDB
+```bash
+# Importer la clé GPG
+curl -fsSL https://pgp.mongodb.com/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+
+# Ajouter le dépôt pour Ubuntu 22.04 (Jammy)
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+```
+
+### Installer MongoDB
+```bash
+sudo apt update
+sudo apt install -y mongodb-org
+```
+
+### Démarrer MongoDB
+```bash
+sudo systemctl start mongod
+sudo systemctl enable mongod
+```
+
+### Vérifier que MongoDB tourne
+```bash
+sudo systemctl status mongod
+```
+Tu devrais voir "active (running)". Pour tester la connexion :
+```bash
+mongosh --eval "db.runCommand({ connectionStatus: 1 })"
+```
+Cela devrait afficher `{ ok: 1 }`.
+
+---
+
+## 4. Installer l'extension PHP pour MongoDB
+
+Trouve ta version de PHP :
+```bash
+php -v | head -n1
+```
+
+Installe l'extension correspondante (exemple pour PHP 8.1) :
+```bash
+sudo apt install php8.1-mongodb
+```
+Adapte le numéro de version (8.2, 8.3, etc.).
+
+Redémarre Apache :
+```bash
+sudo systemctl restart apache2
+```
+
+Vérifie que l'extension est chargée :
+```bash
+php -m | grep mongodb
+```
+Tu devrais voir `mongodb`.
+
+---
+
+## 5. Configurer les permissions pour travailler sans `sudo` dans `/var/www/html`
+
+Par défaut, `/var/www/html` appartient à `root`. Pour pouvoir créer/modifier des fichiers sans taper `sudo` à chaque fois, on va changer le propriétaire du groupe et ajouter notre utilisateur à ce groupe.
+
+### Créer un groupe (si besoin) et ajouter ton utilisateur
+Ton utilisateur est probablement déjà dans le groupe `adm` (Administration). Vérifie :
+```bash
+groups
+```
+Si `adm` n'apparaît pas, ajoute-le :
+```bash
+sudo usermod -aG adm $USER
+```
+Puis déconnecte-toi et reconnecte-toi (ou tape `newgrp adm` temporairement).
+
+### Donner les permissions au dossier
+```bash
+sudo chown -R :adm /var/www/html
+sudo chmod -R g+w /var/www/html
+sudo chmod 2775 /var/www/html
+```
+- `chown -R :adm` : donne la propriété du groupe `adm` à tout le contenu.
+- `chmod -R g+w` : accorde l'écriture au groupe.
+- `chmod 2775` : active le bit setgid pour que les nouveaux fichiers héritent du groupe `adm`.
+
+Maintenant, tu peux créer des fichiers dans `/var/www/html` sans `sudo`.
+
+---
+
+## 6. Installer Composer (gestionnaire de dépendances PHP)
+
+Composer va nous permettre d'installer la bibliothèque MongoDB pour PHP.
+
+### Télécharger et installer Composer
+```bash
+cd ~
+php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+php -r "if (hash_file('sha384', 'composer-setup.php') === 'dac665fdc30fdd8ec78b38b9800061b4150413ff2e3b6f88543c636f7cd84f6db9189d43a81e5503cda447da73c7e5b6') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
+php composer-setup.php
+php -r "unlink('composer-setup.php');"
+```
+
+### Déplacer Composer dans le PATH
+```bash
+sudo mv composer.phar /usr/local/bin/composer
+```
+
+Vérifie :
+```bash
+composer --version
+```
+
+---
+
+## 7. Installer la bibliothèque MongoDB pour PHP dans ton projet
+
+Place-toi dans le répertoire de travail (par exemple `/var/www/html`) :
+```bash
+cd /var/www/html
+```
+
+### Installer la bibliothèque via Composer
+```bash
+composer require mongodb/mongodb
+```
+Cela va créer un dossier `vendor` contenant la bibliothèque et générer `composer.json`.
+
+---
+
+## 8. Tester la connexion PHP → MongoDB
+
+Crée un fichier `test.php` dans `/var/www/html` avec ce contenu :
+
+```php
+<?php
+require 'vendor/autoload.php';
+
+$client = new MongoDB\Client("mongodb://127.0.0.1:27017");
+$db = $client->selectDatabase('test');
+$collection = $db->selectCollection('users');
+
+$insertResult = $collection->insertOne(['name' => 'Alice', 'age' => 25]);
+echo "Insertion réussie, ID : " . $insertResult->getInsertedId() . "<br>";
+
+$users = $collection->find();
+foreach ($users as $user) {
+    echo $user['name'] . ' : ' . $user['age'] . "<br>";
+}
+?>
+```
+
+Ouvre un navigateur et va à `http://localhost/test.php`. Tu devrais voir le résultat.
+
+---
+
+## 9. Organiser son projet ailleurs que dans `/var/www/html` (Virtual Host)
+
+Il est plus propre de ne pas travailler directement à la racine du serveur. On va créer un dossier personnel (par exemple `/home/votrenom/projets/moncrud`) et configurer Apache pour y accéder via une URL comme `http://moncrud.local`.
+
+### Créer le dossier du projet
+```bash
+mkdir -p ~/projets/moncrud
+```
+
+### Donner les bonnes permissions (optionnel)
+Comme ce dossier est dans ton home, tu as déjà tous les droits.
+
+### Créer un fichier de configuration pour Apache
+```bash
+sudo nano /etc/apache2/sites-available/moncrud.conf
+```
+
+Contenu du fichier :
+```apache
+<VirtualHost *:80>
+    ServerName moncrud.local
+    DocumentRoot /home/votrenom/projets/moncrud
+
+    <Directory /home/votrenom/projets/moncrud>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/moncrud_error.log
+    CustomLog ${APACHE_LOG_DIR}/moncrud_access.log combined
+</VirtualHost>
+```
+Remplace `votrenom` par ton nom d'utilisateur.
+
+### Activer le site
+```bash
+sudo a2ensite moncrud.conf
+```
+
+### Activer le module rewrite (si nécessaire pour les frameworks)
+```bash
+sudo a2enmod rewrite
+```
+
+### Redémarrer Apache
+```bash
+sudo systemctl restart apache2
+```
+
+### Modifier le fichier hosts de Windows pour que `moncrud.local` pointe vers localhost
+Ouvre **PowerShell en administrateur** et édite le fichier hosts :
+```powershell
+notepad C:\Windows\System32\drivers\etc\hosts
+```
+Ajoute la ligne :
+```
+127.0.0.1   moncrud.local
+```
+Sauvegarde.
+
+Maintenant, tu peux placer tes fichiers PHP dans `~/projets/moncrud` et y accéder via `http://moncrud.local`.
+
+---
+
+## 10. Éditer les fichiers depuis Windows avec VSCode
+
+WSL crée un partage réseau accessible depuis Windows via `\\wsl$\Ubuntu`. Tu peux ouvrir ce dossier directement dans VSCode.
+
+### Méthode 1 : Depuis l'explorateur Windows
+- Ouvre l'Explorateur de fichiers.
+- Dans la barre d'adresse, tape `\\wsl$\Ubuntu` et appuie sur Entrée.
+- Tu verras toute l'arborescence Linux. Navigue jusqu'à `home/votrenom/projets/moncrud`.
+- Tu peux même créer un raccourci vers ce dossier.
+
+### Méthode 2 : Depuis VSCode avec l'extension "Remote - WSL"
+Installe l'extension **Remote - WSL** dans VSCode (si ce n'est pas déjà fait). Ensuite :
+- Ouvre VSCode.
+- Clique sur l'icône en bas à gauche (><) et choisis "Connect to WSL".
+- Une nouvelle fenêtre s'ouvre connectée à WSL. Tu peux alors ouvrir le dossier `/home/votrenom/projets/moncrud` directement.
+
+Avec cette méthode, le terminal intégré de VSCode sera directement dans WSL, ce qui est très pratique.
+
+---
+
+## 11. CRUD simple avec MongoDB en PHP (exemple)
+
+Place un fichier `index.php` dans ton dossier de projet (par exemple `~/projets/moncrud/index.php`) avec un exemple de CRUD minimal. Je te donne un squelette rapide (sans interface HTML, juste des opérations) :
+
+```php
+<?php
+require 'vendor/autoload.php'; // si tu as installé la bibliothèque dans ce dossier
+
+$client = new MongoDB\Client("mongodb://127.0.0.1:27017");
+$collection = $client->test->users;
+
+// CREATE
+$insertResult = $collection->insertOne(['name' => 'Jean', 'age' => 30]);
+echo "Inserted with ID: " . $insertResult->getInsertedId() . "<br>";
+
+// READ
+$users = $collection->find();
+foreach ($users as $user) {
+    echo $user['name'] . " : " . $user['age'] . "<br>";
+}
+
+// UPDATE
+$updateResult = $collection->updateOne(
+    ['name' => 'Jean'],
+    ['$set' => ['age' => 31]]
+);
+echo "Modified " . $updateResult->getModifiedCount() . " document(s)<br>";
+
+// DELETE
+$deleteResult = $collection->deleteOne(['name' => 'Jean']);
+echo "Deleted " . $deleteResult->getDeletedCount() . " document(s)<br>";
+?>
+```
+
+N'oublie pas d'exécuter `composer require mongodb/mongodb` dans ce dossier si tu ne l'as pas déjà fait.
+
+---
+
+## Résumé des commandes clés
+
+| Étape | Commande |
+|-------|----------|
+| Mettre à jour | `sudo apt update && sudo apt upgrade` |
+| Installer Apache | `sudo apt install apache2` |
+| Installer PHP | `sudo apt install php libapache2-mod-php php-cli php-mongodb` |
+| Installer MongoDB | suivre les étapes d'ajout du dépôt, puis `sudo apt install mongodb-org` |
+| Démarrer MongoDB | `sudo systemctl start mongod` |
+| Vérifier MongoDB | `mongosh` |
+| Permissions | `sudo chown -R :adm /var/www/html && sudo chmod -R g+w /var/www/html` |
+| Installer Composer | `php composer-setup.php` puis `sudo mv composer.phar /usr/local/bin/composer` |
+| Bibliothèque MongoDB | `composer require mongodb/mongodb` |
+| Virtual Host | créer un fichier dans `/etc/apache2/sites-available/` et l'activer |
+| Hosts Windows | éditer `C:\Windows\System32\drivers\etc\hosts` |
+
+---
+
+Voilà, tu as maintenant un environnement complet pour développer ton CRUD MongoDB en PHP sous WSL, avec la possibilité d'éditer les fichiers depuis Windows et d'organiser ton code où tu le souhaites. Si des erreurs surviennent, n'hésite pas à demander de l'aide en fournissant le message exact. Bonne programmation !

@@ -1,0 +1,359 @@
+================================================================================
+                    🍕 API PIZZERIA - REQUÊTES DE TEST
+================================================================================
+
+📍 API BASE URL: http://localhost/api/
+📍 NAVIGATEUR: http://172.20.149.154/public/
+📍 DEBUG: http://172.20.149.154/debug.php
+
+================================================================================
+                            1️⃣ POST - CRÉER UNE PIZZA
+================================================================================
+
+🟢 Créer une pizza (Margherita)
+─────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost/api/pizzas \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Margherita",
+    "description": "Tomate, mozzarella, basilic",
+    "price": 12.50,
+    "ingredients": ["tomate", "mozzarella", "basilic"]
+  }'
+
+✅ Réponse expected:
+{
+  "status": 201,
+  "data": {
+    "id": "507f1f77bcf86cd799439011",
+    "message": "Pizza créée avec succès"
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Créer une pizza (Regina)
+─────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost/api/pizzas \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Regina",
+    "description": "Jambon, champignons, fromage",
+    "price": 14.50,
+    "ingredients": ["jambon", "champignons", "fromage", "olives"]
+  }'
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Créer une pizza (Diavola - pimentée)
+─────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost/api/pizzas \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Diavola",
+    "description": "Pimentée et épicée!",
+    "price": 13.50,
+    "ingredients": ["tomate", "mozzarella", "pepperoni", "piment", "ail"]
+  }'
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Créer une pizza (Quatre Fromages)
+─────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost/api/pizzas \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Quatre Fromages",
+    "description": "Mozzarella, chèvre, bleu, parmesan",
+    "price": 15.50,
+    "ingredients": ["mozzarella", "chèvre", "bleu", "parmesan"]
+  }'
+
+================================================================================
+                            2️⃣ GET - RÉCUPÉRER LES PIZZAS
+================================================================================
+
+🟢 Récupérer TOUTES les pizzas (sans pagination)
+─────────────────────────────────────────────────────────────────────────────
+curl http://localhost/api/pizzas
+
+✅ Réponse expected:
+{
+  "status": 200,
+  "data": {
+    "pizzas": [
+      {
+        "id": "507f1f77bcf86cd799439011",
+        "name": "Margherita",
+        "description": "Tomate, mozzarella, basilic",
+        "price": 12.50,
+        "ingredients": ["tomate", "mozzarella", "basilic"],
+        "created_at": "2026-03-12 15:30:45"
+      },
+      ...
+    ],
+    "pagination": {
+      "total": 4,
+      "limit": 10,
+      "skip": 0,
+      "page": 1
+    }
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Récupérer les pizzas AVEC PAGINATION (5 par page)
+─────────────────────────────────────────────────────────────────────────────
+curl "http://localhost/api/pizzas?limit=5&skip=0"
+
+# Page 2 (pizza 6-10):
+curl "http://localhost/api/pizzas?limit=5&skip=5"
+
+# Page 3 (pizza 11-15):
+curl "http://localhost/api/pizzas?limit=5&skip=10"
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Récupérer 3 pizzas par page
+─────────────────────────────────────────────────────────────────────────────
+curl "http://localhost/api/pizzas?limit=3"
+
+================================================================================
+                        3️⃣ GET - RÉCUPÉRER UNE PIZZA PAR ID
+================================================================================
+
+🟢 Récupérer une pizza spécifique (remplace l'ID par le vrai)
+─────────────────────────────────────────────────────────────────────────────
+curl http://localhost/api/pizzas/507f1f77bcf86cd799439011
+
+✅ Réponse expected:
+{
+  "status": 200,
+  "data": {
+    "id": "507f1f77bcf86cd799439011",
+    "name": "Margherita",
+    "description": "Tomate, mozzarella, basilic",
+    "price": 12.50,
+    "ingredients": ["tomate", "mozzarella", "basilic"],
+    "created_at": "2026-03-12 15:30:45"
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────
+
+❌ Erreur: Pizza non trouvée (ID invalide)
+─────────────────────────────────────────────────────────────────────────────
+curl http://localhost/api/pizzas/000000000000000000000000
+
+Réponse:
+{
+  "status": 404,
+  "error": "Pizza non trouvée"
+}
+
+================================================================================
+                        4️⃣ PUT - MODIFIER UNE PIZZA
+================================================================================
+
+🟢 Modifier le prix d'une pizza (remplace l'ID)
+─────────────────────────────────────────────────────────────────────────────
+curl -X PUT http://localhost/api/pizzas/507f1f77bcf86cd799439011 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 15.99
+  }'
+
+✅ Réponse expected:
+{
+  "status": 200,
+  "data": {
+    "message": "Pizza mise à jour avec succès"
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Modifier le nom et la description
+─────────────────────────────────────────────────────────────────────────────
+curl -X PUT http://localhost/api/pizzas/507f1f77bcf86cd799439011 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Margherita Premium",
+    "description": "Tomate San Marzano, mozzarella di bufala, basilic frais"
+  }'
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Modifier les ingrédients
+─────────────────────────────────────────────────────────────────────────────
+curl -X PUT http://localhost/api/pizzas/507f1f77bcf86cd799439011 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ingredients": ["tomate", "mozzarella", "basilic", "huile d'\''olive", "ail"]
+  }'
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Modifier TOUT
+─────────────────────────────────────────────────────────────────────────────
+curl -X PUT http://localhost/api/pizzas/507f1f77bcf86cd799439011 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Margherita DeLuxe",
+    "description": "La meilleure version!",
+    "price": 18.99,
+    "ingredients": ["tomate", "mozzarella", "basilic", "huile d'\''olive extra"]
+  }'
+
+================================================================================
+                        5️⃣ DELETE - SUPPRIMER UNE PIZZA
+================================================================================
+
+🟢 Supprimer une pizza (remplace l'ID)
+─────────────────────────────────────────────────────────────────────────────
+curl -X DELETE http://localhost/api/pizzas/507f1f77bcf86cd799439011
+
+✅ Réponse expected:
+{
+  "status": 200,
+  "data": {
+    "message": "Pizza supprimée avec succès"
+  }
+}
+
+─────────────────────────────────────────────────────────────────────────────
+
+❌ Erreur: Pizza déjà supprimée
+─────────────────────────────────────────────────────────────────────────────
+curl -X DELETE http://localhost/api/pizzas/507f1f77bcf86cd799439011
+
+Réponse:
+{
+  "status": 404,
+  "error": "Pizza non trouvée"
+}
+
+================================================================================
+                        6️⃣ POST - CHERCHER DES PIZZAS
+================================================================================
+
+🟢 Chercher les pizzas avec "fromage" dans le nom
+─────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost/api/pizzas/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Quatre Fromages"
+  }'
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Chercher les pizzas à moins de 15€
+─────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost/api/pizzas/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": {"$lt": 15}
+  }'
+
+─────────────────────────────────────────────────────────────────────────────
+
+🟢 Chercher les pizzas à plus de 12€
+─────────────────────────────────────────────────────────────────────────────
+curl -X POST http://localhost/api/pizzas/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": {"$gt": 12}
+  }'
+
+═══════════════════════════════════════════════════════════════════════════════
+                            💡 CONSEILS D'UTILISATION
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Copier les commandes dans WSL Terminal:
+   1. Copie la commande curl entière
+   2. Colle dans ton terminal WSL
+   3. Appuie sur Entrée
+
+✅ Voir le résultat formaté avec jq (si installé):
+   curl http://localhost/api/pizzas | jq
+
+✅ Enregistrer la réponse dans un fichier:
+   curl http://localhost/api/pizzas > response.json
+
+✅ Temps de réponse:
+   curl -w "@curl-format.txt" -o /dev/null http://localhost/api/pizzas
+
+✅ Adresse MongoDB:
+   mongodb://127.0.0.1:27017
+   Database: pizzeria
+   Collection: pizzas
+
+═══════════════════════════════════════════════════════════════════════════════
+                            🔍 DEBUGGING
+═══════════════════════════════════════════════════════════════════════════════
+
+Voir le réponse avec tous les détails:
+  curl -v http://localhost/api/pizzas
+
+Voir seulement les headers:
+  curl -i http://localhost/api/pizzas
+
+Afficher la requête complète:
+  curl -vv http://localhost/api/pizzas
+
+═══════════════════════════════════════════════════════════════════════════════
+                        ✨ SCÉNARIO DE TEST COMPLET
+═══════════════════════════════════════════════════════════════════════════════
+
+1️⃣ CRÉER 4 pizzas:
+─────────────────────────────────────────────────────────────────────────────
+# Margherita
+curl -X POST http://localhost/api/pizzas \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Margherita","description":"Classique","price":12.50,"ingredients":["tomate","mozzarella","basilic"]}'
+
+# Regina  
+curl -X POST http://localhost/api/pizzas \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Regina","description":"Jambon, champignons","price":14.50,"ingredients":["jambon","champignons","fromage"]}'
+
+# Diavola
+curl -X POST http://localhost/api/pizzas \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Diavola","description":"Pimentée!","price":13.50,"ingredients":["tomate","mozzarella","pepperoni","piment"]}'
+
+# Quatre Fromages
+curl -X POST http://localhost/api/pizzas \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Quatre Fromages","description":"4 fromages","price":15.50,"ingredients":["mozzarella","chèvre","bleu","parmesan"]}'
+
+2️⃣ LIRE toutes les pizzas:
+─────────────────────────────────────────────────────────────────────────────
+curl http://localhost/api/pizzas
+
+3️⃣ MODIFIER une pizza (remplace l'ID par celui créé):
+─────────────────────────────────────────────────────────────────────────────
+curl -X PUT http://localhost/api/pizzas/[ID] \
+  -H "Content-Type: application/json" \
+  -d '{"price": 16.99}'
+
+4️⃣ SUPPRIMER une pizza:
+─────────────────────────────────────────────────────────────────────────────
+curl -X DELETE http://localhost/api/pizzas/[ID]
+
+5️⃣ VÉRIFIER via l'interface web:
+─────────────────────────────────────────────────────────────────────────────
+http://172.20.149.154/public/
+
+═══════════════════════════════════════════════════════════════════════════════
+                            📞 CODES DE RÉPONSE HTTP
+═══════════════════════════════════════════════════════════════════════════════
+
+200 OK              → Requête réussie (GET, PUT)
+201 Created         → Ressource créée avec succès (POST)
+400 Bad Request     → Données invalides
+404 Not Found       → Pizza/Endpoint non trouvé
+500 Internal Error  → Erreur serveur
+
+═══════════════════════════════════════════════════════════════════════════════

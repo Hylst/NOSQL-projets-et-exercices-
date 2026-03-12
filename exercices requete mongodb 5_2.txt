@@ -1,0 +1,145 @@
+Exercices Requêtes 5.2 sur bdd mongodb tests sur MongoDB Compass : 
+
+**R1** : *« Quelle est la liste des nom et prix de chaque pizza, triée par ordre de prix croissant ? »*
+
+db.pizzas.find(
+  {},
+  { nomPizza: 1, prixVentePizza: 1, _id: 0 }
+).sort({ prixVentePizza: 1 })
+
+**R2** : *« Quel est le nom des pizzas qui coûtent plus de 13€, triés par ordre décroissant du prix ? »*
+
+db.pizzas.find(
+  { prixVentePizza: { $gt: 13 } },
+  { nomPizza: 1, _id: 0 }
+).sort({ prixVentePizza: -1 })
+
+**R3** : *« Quelle est la liste de nom et prénom des employés qui gagnent entre 1 200 € et 1 300 € ? »*
+
+db.employes.find(
+  { salaireMensuel: { $gte: 1200, $lte: 1300 } },
+  { nomEmploye: 1, prenomEmploye: 1, _id: 0 }
+)
+
+**R4** : *« Quel est l'identifiant des commandes passées courant de l'année 2011, entre 15h et 16h de l'après midi, qui n'ont pas été traitées par l'employé numéro 1 ? »*
+
+db.commandes.find(
+  {
+    dateCommande: /^2011/,
+    heureCommande: { $gte: "15:00:00", $lte: "16:00:00" },
+    "employe._id": { $ne: 1 }
+  },
+  { _id: 1 }
+)
+
+**R5** : *« Quel est le nom des ingrédients qui se terminent par la lettre « a » ? »*
+
+db.pizzas.aggregate([
+  { $unwind: "$composition" },           // déplier le tableau
+  { $match: { "composition.nomIngredient": { $regex: /a$/ } } },  // filtrer
+  { $group: { _id: "$composition.nomIngredient" } },              // regrouper
+  { $project: { _id: 0, nomIngredient: "$_id" } }                 // formater
+])
+
+OU
+
+db.pizzas.aggregate([
+  { $unwind: "$composition" },           // déplier 
+  { $match: { "composition.nomIngredient": { $regex: /a$/ } } },  // filtrer
+  { $group: { _id: null, ingredients: { $addToSet: "$composition.nomIngredient" } } },  // tout regrouper
+  { $project: { _id: 0, ingredients: 1 } }                         // garder le tableau
+])
+
+**R6** : *« Quelle est la liste des identifiants de pizzas qui contiennent au moins 100 g de champignons ou au moins 100 g de chorizo ? »*
+
+db.pizzas.find(
+  {
+    $or: [
+      { "composition": { $elemMatch: { nomIngredient: "Champignons", quantite: { $gte: 0.1 } } } },
+      { "composition": { $elemMatch: { nomIngredient: "Chorizo", quantite: { $gte: 0.1 } } } }
+    ]
+  },
+  { _id: 1 }
+)
+
+**R7** : *« Quelle est la liste avec nom et quantité des ingrédients de la pizza 4 fromages ? »*
+
+db.pizzas.aggregate([
+  { $match: { nomPizza: "4 fromages" } },
+  { $unwind: "$composition" },
+  { $project: { _id: 0, nomIngredient: "$composition.nomIngredient", quantite: "$composition.quantite" } }
+])
+
+**R8** : *« Quels sont les noms des pizzas qui contiennent des olives ou du chorizo ? »*
+
+db.pizzas.find(
+  {
+    $or: [
+      { "composition.nomIngredient": { $regex: /olive/i } },
+      { "composition.nomIngredient": "Chorizo" }
+    ]
+  },
+  { nomPizza: 1, _id: 0 }
+)
+
+**R9** : *« Quel est le nom et prénom de l'employé qui a traité la commande 3 ? »*
+
+db.commandes.findOne(
+  { _id: 3 },
+  { "employe.nomEmploye": 1, "employe.prenomEmploye": 1, _id: 0 }
+)
+
+**R10** : *« Quels sont les noms des employés ayant livré les commandes du 23 juin 2011 ? »*
+
+db.commandes.aggregate([
+  { $match: { dateCommande: "2011-06-23" } },
+  { $group: { _id: "$employe._id", nom: { $first: "$employe.nomEmploye" }, prenom: { $first: "$employe.prenomEmploye" } } },
+  { $project: { _id: 0, nom: 1, prenom: 1 } }
+])
+
+**R11** : *« Quels sont le ou les employés qui gagnent le plus ? »*
+
+var maxSalaire = db.employes.aggregate([
+  { $group: { _id: null, max: { $max: "$salaireMensuel" } } }
+]).next().max;
+
+db.employes.find(
+  { salaireMensuel: maxSalaire },
+  { nomEmploye: 1, prenomEmploye: 1, _id: 0 }
+)
+
+**R16** : *« Quels sont les noms des pizzas qui contiennent au moins un ingrédient en commun avec la 4 fromages, sauf la pâte ? »*
+
+var ingredients4f = db.pizzas.findOne({ nomPizza: "4 fromages" }).composition
+  .filter(i => i.nomIngredient !== "Pâte à pizza")
+  .map(i => i.nomIngredient);
+
+db.pizzas.find(
+  {
+    nomPizza: { $ne: "4 fromages" },
+    "composition.nomIngredient": { $in: ingredients4f }
+  },
+  { nomPizza: 1, _id: 0 }
+)
+
+**R17** : *« Quelle est la listes des pizzas plus chères que la pizza royale ? »*
+
+var prixRoyale = db.pizzas.findOne({ nomPizza: "Royale" }).prixVentePizza;
+
+db.pizzas.find(
+  { prixVentePizza: { $gt: prixRoyale } },
+  { nomPizza: 1, _id: 0 }
+)
+
+**R20** : *« Quelles sont les commandes qui ne contiennent pas de pizza 4 fromages ? »*
+
+db.commandes.find(
+  { "lignesCommande.nomPizza": { $nin: ["4 fromages"] } }
+)
+
+**R21** : *« Quelles sont les pizzas qui ne contiennent pas de chorizo ? »*
+
+db.pizzas.find(
+  { "composition.nomIngredient": { $nin: ["chorizo"] } }
+)
+
